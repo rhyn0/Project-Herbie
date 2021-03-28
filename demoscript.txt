@@ -1,0 +1,6 @@
+calibrate
+meters all 1
+stop
+tankturn cw 100
+tank ccw 10
+recenter

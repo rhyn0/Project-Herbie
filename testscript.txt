@@ -1,0 +1,5 @@
+calibrate
+meters all 1
+stop
+tankturn cw 11
+recenter
