@@ -1,14 +1,14 @@
 import time
-CALIBRATION_TIME = 4
-CALIBRATION_SPEED = 30
-SLOWER_CALIBRATION_SPEED = 25
+CALIBRATION_TIME = 9
+CALIBRATION_SPEED = 10
+SLOWER_CALIBRATION_SPEED = 5
 
 MAX_CORNER_ENC = 1550
 INVALID_ENC = 1600
 
 GOTO_SPEED = 1750
 GOTO_FR = 4542
-ACCEL = DECCEL = 3000
+ACCEL = DECCEL = 1000
 
 ANGULAR_RANGE = 72
 class Motor:
@@ -155,7 +155,6 @@ class CornerMotor(Motor):
             target_position = current_position - encoder_distance
 
         print("Rotating %s for %d degrees" % (direction, angle))
-        
         self.go_to_position(target_position)
 
 
@@ -165,10 +164,22 @@ class CornerMotor(Motor):
         left_most = 0
         right_most = 0
         centered = 0
+        
 
         # turn to left-most position, store left-most encoder value in global var
+        prev_encoder = self.encoder_value()
+        print(prev_encoder)
         self.set_motor_register_speed("backward", CALIBRATION_SPEED)
-        time.sleep(CALIBRATION_TIME)
+        start = time.time()
+        while time.time() - start < CALIBRATION_TIME:
+            curr_encoder = self.encoder_value()
+            print(curr_encoder)
+            if curr_encoder - prev_encoder < 3:
+                print("breaking on encoder condition")
+                break
+            prev_encoder = curr_encoder
+            print(prev_encoder)
+        #time.sleep(CALIBRATION_TIME) # trying to avoid using sleep since that will mess with the point of having multithread
         self.stop()
         left_most = self.encoder_value()
         self.left_most = left_most
@@ -197,4 +208,5 @@ class CornerMotor(Motor):
 
         # calculate encoder to angle value
         encoder_range = abs(self.right_most - self.left_most)
-        self.encoders_per_degree = encoder_range / ANGULAR_RANGE
+        #self.encoders_per_degree = encoder_range / ANGULAR_RANGE
+        return (left_most, self.center, right_most)

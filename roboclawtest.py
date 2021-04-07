@@ -10,4 +10,4 @@ if __name__ == "__main__":
     rc.Open()
 
     print(rc.ReadVersion(address))
-    print(rc.ReadEncM1(address))
+    print(rc.ReadEncM2(address))
