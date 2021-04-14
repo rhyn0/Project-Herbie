@@ -1,7 +1,8 @@
 from roboclaw_3 import Roboclaw
 from motor import Motor, CornerMotor
-import time
+from datetime import datetime
 import math
+import time
 
 rc = Roboclaw("/dev/ttyS0", 115200)
 rc.Open()
@@ -15,7 +16,7 @@ QUAD_DR = Motor(rc, POC_ADDR, 1)
 # QUAD_CR.calibrated = True
 
 CALIBRATION_TIME = 9
-CALIBRATION_SPEED = 10
+CALIBRATION_SPEED = 20
 SLOWER_CALIBRATION_SPEED = 5
 
 MAX_CORNER_ENC = 1550
@@ -30,21 +31,45 @@ ANGULAR_RANGE = 90
 def encoder_test(corner):
     prev_encoder = corner.encoder_value()
     print("starting encoder value: " + str(prev_encoder))
+    corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
+    #rc.BackwardM2(POC_ADDR, CALIBRATION_SPEED)
     start = time.time()
+    time.sleep(0.1)
     while time.time() - start < CALIBRATION_TIME:
+        time.sleep(0.01)
         curr_encoder = corner.encoder_value()
         print("current encoder value: " + str(curr_encoder))
-        if curr_encoder - prev_encoder < 3:
+        if abs(curr_encoder - prev_encoder) < 3:
             print("breaking on encoder condition")
+            corner.stop()
             break
         prev_encoder = curr_encoder
-        print(prev_encoder)
+    corner.stop()
+    left_most = corner.encoder_value()
+    #time to go right
+    corner.set_motor_register_speed("forward", CALIBRATION_SPEED)
+    #rc.BackwardM2(POC_ADDR, CALIBRATION_SPEED)
+    start = time.time()
+    time.sleep(0.1)
+    while time.time() - start < CALIBRATION_TIME:
+        time.sleep(0.01)
+        curr_encoder = corner.encoder_value()
+        print("current encoder value: " + str(curr_encoder))
+        if abs(curr_encoder - prev_encoder) < 3:
+            print("breaking on encoder condition")
+            corner.stop()
+            break
+        prev_encoder = curr_encoder
+    corner.stop()
+    right_most = corner.encoder_value()
+    print("left: " + str(left_most) + "; right: " + str(right_most))
 
 def timed_test(corner):
-    print(time.time())
+    print(datetime.now().isoformat(timespec='milliseconds')[-9:])
     while True:
         print("encoder val: " + str(corner.encoder_value()))
-        print(time.time())
+        print(datetime.now().isoformat(timespec='milliseconds')[-9:])
+        time.sleep(0.001)
 
 def calib_test(corner):
     flag = 0
@@ -97,4 +122,4 @@ def calib_test(corner):
     corner.encoders_per_degree = encoder_range / ANGULAR_RANGE
     return (left_most, corner.center, right_most)
 
-timed_test(QUAD_CR)
+encoder_test(QUAD_CR)
