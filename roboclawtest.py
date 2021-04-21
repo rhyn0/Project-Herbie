@@ -8,6 +8,7 @@ if __name__ == "__main__":
     address = int(sys.argv[1])
     rc = Roboclaw("/dev/ttyS0", 115200)
     rc.Open()
-
+    rc.ResetEncoders(address)
     print(rc.ReadVersion(address))
+    print(rc.ReadEncM1(address))
     print(rc.ReadEncM2(address))
