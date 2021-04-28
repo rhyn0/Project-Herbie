@@ -38,7 +38,6 @@ def encoder_test(corner):
     while time.time() - start < CALIBRATION_TIME:
         time.sleep(0.01)
         curr_encoder = corner.encoder_value()
-        print("current encoder value: " + str(curr_encoder))
         if abs(curr_encoder - prev_encoder) < 3:
             print("breaking on encoder condition")
             corner.stop()
@@ -54,9 +53,7 @@ def encoder_test(corner):
     while time.time() - start < CALIBRATION_TIME:
         time.sleep(0.01)
         curr_encoder = corner.encoder_value()
-        print("current encoder value: " + str(curr_encoder))
         if abs(curr_encoder - prev_encoder) < 3:
-            print("breaking on encoder condition")
             corner.stop()
             break
         prev_encoder = curr_encoder
