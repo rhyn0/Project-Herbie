@@ -69,45 +69,60 @@ def timed_test(corner):
         time.sleep(0.001)
 
 def calib_test(corner):
-    flag = 0
     left_most = 0
     right_most = 0
-    centered = 0
-    
-    # turn to left-most position, store left-most encoder value in global var
-    prev_encoder = corner.encoder_value()
-    print(prev_encoder)
-    corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
-    start = time.time()
-    while time.time() - start < CALIBRATION_TIME:
-        curr_encoder = corner.encoder_value()
-        print(curr_encoder)
-        if curr_encoder - prev_encoder < 3:
-            print("breaking on encoder condition")
-            break
-        prev_encoder = curr_encoder
+
+    while (right_most - left_most) < 1800: # max range is ~2000, run until this is about right
+        # turn to left-most position, store left-most encoder value in global var
+        prev_encoder = corner.encoder_value()
         print(prev_encoder)
-    #time.sleep(CALIBRATION_TIME) # trying to avoid using sleep since that will mess with the point of having multithread
-    corner.stop()
-    left_most = corner.encoder_value()
+        corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
+        start = time.time()
+        while time.time() - start < CALIBRATION_TIME:
+            curr_encoder = corner.encoder_value()
+            print(curr_encoder)
+            if curr_encoder - prev_encoder < 3:
+                print("breaking on encoder condition")
+                break
+            prev_encoder = curr_encoder
+            print(prev_encoder)
+        #time.sleep(CALIBRATION_TIME) # trying to avoid using sleep since that will mess with the point of having multithread
+        corner.stop()
+        rc.ForwardM2(POC_ADDR, SLOWER_CALIBRATION_SPEED)
+        time.sleep(0.5)
+        corner.stop()
+        prev_encoder = corner.encoder_value()
+        print(prev_encoder)
+        corner.set_motor_register_speed("backward", CALIBRATION_SPEED + 5)
+        start = time.time()
+        while time.time() - start < CALIBRATION_TIME:
+            curr_encoder = corner.encoder_value()
+            print(curr_encoder)
+            if curr_encoder - prev_encoder < 3:
+                print("breaking on encoder condition, second time")
+                break
+            prev_encoder = curr_encoder
+            print(prev_encoder)
+        left_most = corner.encoder_value()
+        
+        prev_encoder = corner.encoder_value()
+        print(prev_encoder)
+        corner.set_motor_register_speed("forward", CALIBRATION_SPEED)
+        start = time.time()
+        while time.time() - start < CALIBRATION_TIME:
+            curr_encoder = corner.encoder_value()
+            print(curr_encoder)
+            if curr_encoder - prev_encoder < 3:
+                print("breaking on encoder condition, forward")
+                break
+            prev_encoder = curr_encoder
+            print(prev_encoder)
+
+        corner.stop()
+        right_most = corner.encoder_value()     # store right-most encoder val, calculate center
+
     corner.left_most = left_most
-    # turn to right-most position, adding 1550 to running total if the encoder vals wrap
-    corner.set_motor_register_speed("forward", CALIBRATION_SPEED)
-    # 11/17/20 I don't think this while loop is necessary
-    start = time.time()
-    while time.time() - start < CALIBRATION_TIME:
-        if (
-            corner.encoder_value() >= 1500 and flag == 0
-        ):  # not using 1550 cuz the enc values change fast, so giving it wide range
-            centered += MAX_CORNER_ENC
-            flag = 1
-
-    corner.stop()
-    right_most = corner.encoder_value()     # store right-most encoder val, calculate center
-
     corner.right_most = right_most
-    
-
     corner.center = (right_most + left_most) // 2
     
     corner.calibrated = True

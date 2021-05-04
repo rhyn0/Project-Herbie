@@ -208,5 +208,5 @@ class CornerMotor(Motor):
 
         # calculate encoder to angle value
         encoder_range = abs(self.right_most - self.left_most)
-        #self.encoders_per_degree = encoder_range / ANGULAR_RANGE
+        self.encoders_per_degree = encoder_range / ANGULAR_RANGE
         return (left_most, self.center, right_most)
