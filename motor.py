@@ -108,6 +108,9 @@ class CornerMotor(Motor):
         self.total = 0
         self.calibrated = False
         self.encoders_per_degree = None   # ratio of encoder values 
+    
+    def __repr__(self):
+        return "Addr: {}, left: {}, right: {}, calibrated?: {}".format(self.rc_addr, self.left_most, self.right_most, self.calibrated)
 
     def go_to_position(self, position):
         ''' overrided to ensure position doesn't go out of bounds '''

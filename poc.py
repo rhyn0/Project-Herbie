@@ -72,63 +72,67 @@ def timed_test(corner):
         print(datetime.now().isoformat(timespec='milliseconds')[-9:])
         time.sleep(0.001)
 
-def calib_test(corner):
+def calib_test(corner, lock):
     left_most = 0
     right_most = 0
     runs = 0
     while (right_most - left_most) < 1800 and runs < 3: # max range is ~2000, run until this is about right
         # turn to left-most position, store left-most encoder value in global var
-        prev_encoder = corner.encoder_value()
-        print("starting encoder value: " + str(prev_encoder))
-        print(prev_encoder)
-        corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
-        start = time.time()
-        time.sleep(0.1)
-        i = 0
-        while time.time() - start < CALIBRATION_TIME:
-            time.sleep(0.05)
-            curr_encoder = corner.encoder_value()
-            if abs(curr_encoder - prev_encoder) < 3:
-                print(corner.rc_addr, "breaking on encoder condition")
-                i += 1
-            if i == 3:
-                break
-            prev_encoder = curr_encoder
-        corner.stop()
-        corner.move_distance(80)
-        while not corner.move_is_complete():
-            pass
-        corner.stop()
-        prev_encoder = corner.encoder_value()
-        print(prev_encoder)
-        corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
-        start = time.time()
-        while time.time() - start < CALIBRATION_TIME:
-            time.sleep(0.05)
-            curr_encoder = corner.encoder_value()
-            if abs(curr_encoder - prev_encoder) < 3:
-                print(corner.rc_addr, "breaking on encoder condition, second time")
-                break
-            prev_encoder = curr_encoder
-        corner.stop()
-        left_most = corner.encoder_value()
-        prev_encoder = corner.encoder_value()
-        print(prev_encoder)
-        corner.set_motor_register_speed("forward", CALIBRATION_SPEED)
-        start = time.time()
-        time.sleep(0.1)
-        while time.time() - start < CALIBRATION_TIME:
-            time.sleep(0.05)
-            curr_encoder = corner.encoder_value()
-            if abs(curr_encoder - prev_encoder) < 3:
-                print(corner.rc_addr, "breaking on encoder condition, forward")
-                break
-            prev_encoder = curr_encoder
+        with lock:
+            prev_encoder = corner.encoder_value()
+            print("starting encoder value: " + str(prev_encoder))
             print(prev_encoder)
+            corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
+            start = time.time()
+            time.sleep(0.1)
+            i = 0
+            while time.time() - start < CALIBRATION_TIME:
+                time.sleep(0.05)
+                curr_encoder = corner.encoder_value()
+                if abs(curr_encoder - prev_encoder) < 3:
+                    print(corner, "breaking on encoder condition")
+                    i += 1
+                if i == 3:
+                    break
+                prev_encoder = curr_encoder
+            corner.stop()
+            corner.move_distance(80)
+            while not corner.move_is_complete():
+                pass
+            corner.stop()
+            prev_encoder = corner.encoder_value()
+            print(prev_encoder)
+            corner.set_motor_register_speed("backward", CALIBRATION_SPEED)
+            start = time.time()
+            while time.time() - start < CALIBRATION_TIME:
+                time.sleep(0.05)
+                curr_encoder = corner.encoder_value()
+                if abs(curr_encoder - prev_encoder) < 3:
+                    print(corner, "breaking on encoder condition, second time")
+                    break
+                prev_encoder = curr_encoder
+            corner.stop()
+            left_most = corner.encoder_value() + 50
+        time.sleep(2)
+        prev_encoder = left_most
+        print(prev_encoder)
+        with lock:
+            corner.set_motor_register_speed("forward", CALIBRATION_SPEED)
+            start = time.time()
+            time.sleep(0.1)
+            while time.time() - start < CALIBRATION_TIME:
+                time.sleep(0.05)
+                curr_encoder = corner.encoder_value()
+                if abs(curr_encoder - prev_encoder) < 3:
+                    print(corner, "breaking on encoder condition, forward")
+                    break
+                prev_encoder = curr_encoder
+                #print(prev_encoder)
 
-        corner.stop()
-        right_most = corner.encoder_value()     # store right-most encoder val, calculate center
+            corner.stop()
+            right_most = corner.encoder_value() - 50    # store right-most encoder val, calculate center
         runs += 1
+        print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
         
     corner.left_most = left_most
     corner.right_most = right_most
@@ -137,7 +141,10 @@ def calib_test(corner):
 
     corner.calibrated = True
     # go to center position
-    corner.go_to_center()
+    with lock:
+        corner.go_to_center()
+        while not corner.move_is_complete():
+            pass
 
     # calculate encoder to angle value
     encoder_range = abs(corner.right_most - corner.left_most)
@@ -154,10 +161,13 @@ while not FL_CR.move_is_complete():
     continue
 FL_CR.stop()
 
-t1 = threading.Thread(target=calib_test, args=(FL_CR,))
-t2 = threading.Thread(target=calib_test, args=(BL_CR,))
+lock = threading.Lock()
+t1 = threading.Thread(target=calib_test, args=(FL_CR, lock, ))
+t2 = threading.Thread(target=calib_test, args=(BL_CR, lock, ))
 t1.start()
 t2.start()
 t1.join()
 t2.join()
 print("did it work?")
+print(FL_CR)
+print(BL_CR)
