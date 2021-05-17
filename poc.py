@@ -112,7 +112,7 @@ def calib_test(corner, lock):
                     break
                 prev_encoder = curr_encoder
             corner.stop()
-            left_most = corner.encoder_value() + 50
+            left_most = corner.encoder_value()
         time.sleep(2)
         prev_encoder = left_most
         print(prev_encoder)
@@ -130,12 +130,12 @@ def calib_test(corner, lock):
                 #print(prev_encoder)
 
             corner.stop()
-            right_most = corner.encoder_value() - 50    # store right-most encoder val, calculate center
+            right_most = corner.encoder_value()   # store right-most encoder val, calculate center
         runs += 1
         print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
         
-    corner.left_most = left_most
-    corner.right_most = right_most
+    corner.left_most = left_most + 50 
+    corner.right_most = right_most - 50 # edit range of motion so arms don't hit physical stops in most cases
     corner.center = (right_most + left_most) // 2
     print("center is: ", corner.center)
 
@@ -151,19 +151,10 @@ def calib_test(corner, lock):
     corner.encoders_per_degree = encoder_range / ANGULAR_RANGE
     return (left_most, corner.center, right_most)
 
-BL_CR.move_distance(200)
-while not BL_CR.move_is_complete():
-    continue
-BL_CR.stop()
-
-FL_CR.move_distance(200)
-while not FL_CR.move_is_complete():
-    continue
-FL_CR.stop()
 
 lock = threading.Lock()
-t1 = threading.Thread(target=calib_test, args=(FL_CR, lock, ))
-t2 = threading.Thread(target=calib_test, args=(BL_CR, lock, ))
+t1 = threading.Thread(target=FL_CR.calibrate, args=(lock, ))
+t2 = threading.Thread(target=BL_CR.calibrate, args=(lock, ))
 t1.start()
 t2.start()
 t1.join()
@@ -171,3 +162,16 @@ t2.join()
 print("did it work?")
 print(FL_CR)
 print(BL_CR)
+
+FL_DR.move_distance(1000)
+BL_DR.move_distance(1000)
+while not BL_DR.move_is_complete():
+    pass
+FL_DR.stop()
+BL_DR.stop()
+FL_DR.move_distance(-1000)
+BL_DR.move_distance(-1000)
+while not BL_DR.move_is_complete():
+    pass
+FL_DR.stop()
+BL_DR.stop()

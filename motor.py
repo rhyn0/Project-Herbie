@@ -1,6 +1,6 @@
 import time
 CALIBRATION_TIME = 9
-CALIBRATION_SPEED = 10
+CALIBRATION_SPEED = 25
 SLOWER_CALIBRATION_SPEED = 5
 
 MAX_CORNER_ENC = 1550
@@ -9,8 +9,8 @@ INVALID_ENC = 1600
 GOTO_SPEED = 1750
 GOTO_FR = 4542
 ACCEL = DECCEL = 1000
+ANGULAR_RANGE = 90 # was 72 for Herbie Mk1
 
-ANGULAR_RANGE = 72
 class Motor:
     def __init__(self, rc, rc_addr, motor_ndx):
         self.rc = rc
@@ -162,52 +162,75 @@ class CornerMotor(Motor):
 
 
 
-    def calibrate(self):
-        flag = 0
+    def calibrate(self, lock):
         left_most = 0
         right_most = 0
-        centered = 0
-        
+        runs = 0
+        while (right_most - left_most) < 1800 and runs < 3: # max range is ~2000, run until this is about right
+            # turn to left-most position, store left-most encoder value in global var
+            with lock:
+                prev_encoder = self.encoder_value()
+                print("starting encoder value: " + str(prev_encoder))
+                self.set_motor_register_speed("backward", CALIBRATION_SPEED)
+                start = time.time()
+                time.sleep(0.1)
+                i = 0
+                while time.time() - start < CALIBRATION_TIME:
+                    time.sleep(0.05)
+                    curr_encoder = self.encoder_value()
+                    if abs(curr_encoder - prev_encoder) < 3:
+                        #print(self, "breaking on encoder condition")
+                        i += 1
+                    if i == 3:
+                        break
+                    prev_encoder = curr_encoder
+                self.stop()
+                self.move_distance(80)
+                while not self.move_is_complete():
+                    pass
+                self.stop()
+                prev_encoder = self.encoder_value()
+                self.set_motor_register_speed("backward", CALIBRATION_SPEED)
+                start = time.time()
+                while time.time() - start < CALIBRATION_TIME:
+                    time.sleep(0.05)
+                    curr_encoder = self.encoder_value()
+                    if abs(curr_encoder - prev_encoder) < 3:
+                        #print(self, "breaking on encoder condition, second time")
+                        break
+                    prev_encoder = curr_encoder
+                self.stop()
+                left_most = self.encoder_value()
+            time.sleep(2)
+            prev_encoder = left_most
+            with lock:
+                self.set_motor_register_speed("forward", CALIBRATION_SPEED)
+                start = time.time()
+                time.sleep(0.1)
+                while time.time() - start < CALIBRATION_TIME:
+                    time.sleep(0.05)
+                    curr_encoder = self.encoder_value()
+                    if abs(curr_encoder - prev_encoder) < 3:
+                        #print(self, "breaking on encoder condition, forward")
+                        break
+                    prev_encoder = curr_encoder
+                    #print(prev_encoder)
 
-        # turn to left-most position, store left-most encoder value in global var
-        prev_encoder = self.encoder_value()
-        print(prev_encoder)
-        self.set_motor_register_speed("backward", CALIBRATION_SPEED)
-        start = time.time()
-        while time.time() - start < CALIBRATION_TIME:
-            curr_encoder = self.encoder_value()
-            print(curr_encoder)
-            if curr_encoder - prev_encoder < 3:
-                print("breaking on encoder condition")
-                break
-            prev_encoder = curr_encoder
-            print(prev_encoder)
-        #time.sleep(CALIBRATION_TIME) # trying to avoid using sleep since that will mess with the point of having multithread
-        self.stop()
-        left_most = self.encoder_value()
-        self.left_most = left_most
-        # turn to right-most position, adding 1550 to running total if the encoder vals wrap
-        self.set_motor_register_speed("forward", CALIBRATION_SPEED)
-        # 11/17/20 I don't think this while loop is necessary
-        start = time.time()
-        while time.time() - start < CALIBRATION_TIME:
-            if (
-                self.encoder_value() >= 1500 and flag == 0
-            ):  # not using 1550 cuz the enc values change fast, so giving it wide range
-                centered += MAX_CORNER_ENC
-                flag = 1
-
-        self.stop()
-        right_most = self.encoder_value()     # store right-most encoder val, calculate center
-
-        self.right_most = right_most
-        
-
+                self.stop()
+                right_most = self.encoder_value()   # store right-most encoder val, calculate center
+            runs += 1
+            #print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
+            
+        self.left_most = left_most + 50 
+        self.right_most = right_most - 50 # edit range of motion so arms don't hit physical stops in most cases
         self.center = (right_most + left_most) // 2
-        
+
         self.calibrated = True
         # go to center position
-        self.go_to_center()
+        with lock:
+            self.go_to_center()
+            while not self.move_is_complete():
+                pass
 
         # calculate encoder to angle value
         encoder_range = abs(self.right_most - self.left_most)

@@ -2,6 +2,7 @@ import time
 import math
 from roboclaw_3 import Roboclaw
 from motor import Motor, CornerMotor
+import threading
 
 
 # arc turn constants
@@ -26,24 +27,25 @@ rc.Open()
 # 0x83 -> 131 -> roboclaw #4 wheels 4 & 6 for wheel rotation
 # 0x84 -> 132 -> roboclaw #5 wheels 7 & 9 for wheel rotation
 
-RC_ADDR_1 = 0x80
-RC_ADDR_2 = 0x81
-RC_ADDR_3 = 0x82
-RC_ADDR_4 = 0x83
-RC_ADDR_5 = 0x84
+RC_ADDR_FL = 0x80
+RC_ADDR_FR = 0x81
+RC_ADDR_BR = 0x82
+RC_ADDR_BL = 0x83
+RC_ADDR_MID = 0x84
 
-WHEEL_FL = Motor(rc, RC_ADDR_2, 1)  # (rc_addr, mi or m2)
-WHEEL_FR = Motor(rc, RC_ADDR_2, 2)  # (rc_addr, mi or m2)
-WHEEL_ML = Motor(rc, RC_ADDR_1, 2)
-WHEEL_MR = Motor(rc, RC_ADDR_3, 1)
-WHEEL_BL = Motor(rc, RC_ADDR_1, 1)
-WHEEL_BR = Motor(rc, RC_ADDR_3, 2)
+# Driving motors
+WHEEL_FL = Motor(rc, RC_ADDR_FL, 1)  # (rc_addr, mi or m2)
+WHEEL_FR = Motor(rc, RC_ADDR_FR, 1)  # (rc_addr, mi or m2)
+WHEEL_ML = Motor(rc, RC_ADDR_MID, 1) # MID wheels might be different order (1 - left, 2 - right)
+WHEEL_MR = Motor(rc, RC_ADDR_MID, 2)
+WHEEL_BL = Motor(rc, RC_ADDR_BL, 1)
+WHEEL_BR = Motor(rc, RC_ADDR_BR, 1)
 
-
-CORNER_FL = CornerMotor(rc, RC_ADDR_4, 2)
-CORNER_FR = CornerMotor(rc, RC_ADDR_5, 1)
-CORNER_BL = CornerMotor(rc, RC_ADDR_4, 1)
-CORNER_BR = CornerMotor(rc, RC_ADDR_5, 2)
+# Articulating / turning motors
+CORNER_FL = CornerMotor(rc, RC_ADDR_FL, 2)
+CORNER_FR = CornerMotor(rc, RC_ADDR_FR, 2)
+CORNER_BL = CornerMotor(rc, RC_ADDR_BL, 2)
+CORNER_BR = CornerMotor(rc, RC_ADDR_BR, 2)
 
 CORNERS = [CORNER_FL, CORNER_FR, CORNER_BL, CORNER_BR]
 
@@ -51,7 +53,7 @@ WHEELS = [WHEEL_FL, WHEEL_FR, WHEEL_ML, WHEEL_MR, WHEEL_BL, WHEEL_BR]
 WHEELS_LEFT = [WHEEL_FL, WHEEL_ML, WHEEL_BL]
 WHEELS_RIGHT = [WHEEL_FR, WHEEL_MR, WHEEL_BR]
 
-all_motors = {
+ALL_MOTORS = {
     "wheel_fr": WHEEL_FR,
     "wheel_fl": WHEEL_FL,
     "wheel_ml": WHEEL_ML,
@@ -134,7 +136,7 @@ def get_arc_time(degree, inner_speed):
 # commands
 
 def rotate(motor_name, direction, angle):
-    motor = all_motors.get(motor_name, None)
+    motor = ALL_MOTORS.get(motor_name, None)
     if motor is None:
         print("invalid motor name: " + motor_name)
         return
@@ -142,13 +144,13 @@ def rotate(motor_name, direction, angle):
     motor.rotate_n_degrees(direction, angle)
 
 def print_encoders():
-    for motor_name in all_motors.keys():
-        value = all_motors[motor_name].encoder_value()
+    for motor_name in ALL_MOTORS.keys():
+        value = ALL_MOTORS[motor_name].encoder_value()
         print("%s: %d" % (motor_name,value))
 
 
 def position(motor_name, position):
-    motor = all_motors.get(motor_name, None)
+    motor = ALL_MOTORS.get(motor_name, None)
     if motor is None:
         print("invalid motor name: " + motor_name)
         return
@@ -156,7 +158,7 @@ def position(motor_name, position):
     motor.go_to_position(position)
 
 def distance(motor_name, distance):
-    motor = all_motors.get(motor_name, None)
+    motor = ALL_MOTORS.get(motor_name, None)
     if motor is None:
         print("invalid motor name: " + motor_name)
         return
@@ -169,16 +171,16 @@ def move_distance_meters(motor_name, distance):
     # COUNT_PER_METER_FL = 122000
     COUNT_PER_METER_FL = 92000
     if motor_name == 'all':
-        for wheel_name in all_motors:
+        for wheel_name in ALL_MOTORS:
             if 'wheel' in wheel_name:
                 if 'fl' in wheel_name:
                     encoder_dist = distance * COUNT_PER_METER_FL
-                    motor = all_motors.get(wheel_name)
+                    motor = ALL_MOTORS.get(wheel_name)
                     encoder_dist = int(encoder_dist)
                     motor.move_distance(encoder_dist, int(4500 * 5)) #move wheel fl faster
                 else:
                     encoder_dist = distance * COUNT_PER_METER
-                    motor = all_motors.get(wheel_name)
+                    motor = ALL_MOTORS.get(wheel_name)
                 encoder_dist = int(encoder_dist)
                 motor.move_distance(encoder_dist, int(1750*1.5))
         # wait until move complete
@@ -192,7 +194,7 @@ def move_distance_meters(motor_name, distance):
         print("finished waiting")
                 
     else:
-        motor = all_motors.get(motor_name, None)
+        motor = ALL_MOTORS.get(motor_name, None)
         if motor is None:
             print("invalid motor name: " + motor_name)
             return
@@ -216,12 +218,12 @@ def move_default_velocity(motor_name, direction):
     if direction != "forward" and direction != "backward":
         direction = "forward" # user messed up, default to forward
     if motor_name == 'all':
-        for wheel_name in all_motors:
+        for wheel_name in ALL_MOTORS:
             if 'wheel' in wheel_name:
-                motor = all_motors.get(wheel_name)
+                motor = ALL_MOTORS.get(wheel_name)
                 motor.set_motor_speed(direction, 0.01)
     else:
-        motor = all_motors.get(motor_name, None)
+        motor = ALL_MOTORS.get(motor_name, None)
         if motor is None:
             print("invalid motor name: " + motor_name)
             return
@@ -229,29 +231,30 @@ def move_default_velocity(motor_name, direction):
 
 # goes clockwise from back right
 def calibrate_all():
-    print("BR\n")
-    CORNER_BR.calibrate()
-    print("BL\n")
-    CORNER_BL.calibrate()
-    print("FL\n")
-    CORNER_FL.calibrate()
-    print("FR\n")
-    CORNER_FR.calibrate()
+    lock = threading.Lock()
+    threads = [None] * len(CORNERS)
+    for i in range(len(CORNERS)):
+        threads[i] = threading.Thread(target=CORNERS[i].calibrate, args=(lock, ))
+        threads[i].start()
+        # t1 = threading.Thread(target=calib_test, args=(FL_CR, lock, ))
+        # t2 = threading.Thread(target=calib_test, args=(BL_CR, lock, ))
+    for thread in threads:
+        thread.join()
     
-    wait_until_move_complete(CORNER_FR)
+    wait_until_move_complete(CORNER_BR)
 
     for cr in CORNERS:
         cr.stop()
     return 0
 
 def calibrate_one(motor_name):
-    motor = all_motors.get(motor_name, None)
+    motor = ALL_MOTORS.get(motor_name, None)
     if motor is None:
         print("invalid motor name: " + motor_name)
         return
     motor.calibrate()
     wait_until_move_complete(motor)
-
+    motor.stop()
 
 # tells all motors to stop
 # invoke: kill or k
@@ -263,7 +266,7 @@ def kill_all():
     return 0
 
 def rotate_max(motor_name, direction):
-    motor = all_motors.get(motor_name, None)
+    motor = ALL_MOTORS.get(motor_name, None)
     if motor is None:
         print("invalid motor name: " + motor_name)
         return
