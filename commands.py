@@ -6,9 +6,11 @@ import threading
 
 
 # arc turn constants
-R_OUTER = 0.32  # 320 mm dist between corner wheels
-R_HEIGHT = 0.29  # 290 mm dist between rover center and front
+R_OUTER = 0.31  # 310 mm dist between front/back corner wheels
+R_OUTER_MID = 0.4 # 400 mm dist between center drive wheels
+R_HEIGHT = 0.556 / 2 # 290 mm dist between rover center and front
 MAX_TURN = 36
+MAX_SPEED_VEL = 0.05
 CALIBRATION_SPEED = 30
 STOP_THRESHOLD = 100
 MOVING_THRESHOLD = 50
@@ -20,12 +22,6 @@ SECONDS_PER_DEGREE = 39.8 / 360
 
 rc = Roboclaw("/dev/ttyS0", 115200)
 rc.Open()
-
-# 0x80 -> 128 -> roboclaw #1 wheels 4 & 5 for wheel spin
-# 0x81 -> 129 -> roboclaw #2 wheels 6 & 7 for wheel spin
-# 0x82 -> 130 -> roboclaw #3 wheels 8 & 9 for wheel spin
-# 0x83 -> 131 -> roboclaw #4 wheels 4 & 6 for wheel rotation
-# 0x84 -> 132 -> roboclaw #5 wheels 7 & 9 for wheel rotation
 
 RC_ADDR_FL = 0x80
 RC_ADDR_FR = 0x81
@@ -67,61 +63,101 @@ ALL_MOTORS = {
 }
 
 # helpers
-def set_speed_left_side(direction, speed):
-    """ sets all left side wheels to given a direction [forward, backward] and speed (m/s)"""
+def set_speed_left_side(direction, cen_speed, speed=None):
+    """ sets all left side wheels to given a direction [forward, backward] and speed (m/s)
+    Center wheel speed is different to allow arc turns
+    """
+    if speed is None:
+        speed = cen_speed
     for wheel in WHEELS_LEFT:
-        wheel.set_motor_speed(direction, speed)
+        if wheel is WHEEL_ML:
+            wheel.set_motor_speed(direction, cen_speed)
+        else:
+            wheel.set_motor_speed(direction, speed)
 
 
-def set_speed_right_side(direction, speed):
-    """ sets all right side wheels to given a direction [forward, backward] and speed (m/s)"""
+def set_speed_right_side(direction, cen_speed, speed=None):
+    """ sets all right side wheels to given a direction [forward, backward] and speed (m/s)
+    Center wheel speed is different to allow arc turns
+    """
+    if speed is None:
+        speed = cen_speed
     for wheel in WHEELS_RIGHT:
-        wheel.set_motor_speed(direction, speed)
+        if wheel is WHEEL_MR:
+            wheel.set_motor_speed(direction, cen_speed)
+        else:
+            wheel.set_motor_speed(direction, speed)
 
 
 def stop_all_wheels():
+    """ Stops all drive wheels on call
+    """
     for motor in WHEELS:
         motor.stop()
 
 def kill_all():
+    """ Stops all wheels on call
+    """
     print("stopping all motors")
     for wheel in WHEELS:      
         wheel.stop()
     for corner in CORNERS:
         corner.stop()  
 
-def get_register_speed(speed):
-    result2 = (0.002 + speed) // 0.0009  # based on graph velocity formula for m/s
-    result2 = int(result2)
-    if result2 > 127:
-        result2 = 127
-    return result2  # velo = 0.0009(reg value) - 0.002
 
-
-def get_time(speed, dist):  # speed in m/s
-    howLong = dist / speed  # velo = distance / time
+def get_time(speed, dist): 
+    """ Simple speed = dist * time calculation
+    """ 
+    howLong = abs(dist / speed)  # velo = distance / time
     return howLong
 
 
-def get_velo_ms(speed):  # converts register value to velocity in m/s
+def get_velo_ms(speed): 
+    """converts register value to velocity in m/s
+    Opposite conversion to get_register_speed
+    """
     msSpeed = (0.0009 * speed) - 0.002
     return msSpeed
 
 
 # for arc turns
-def get_inner_velo(degree, outer_speed):
-    deg = int(degree)
-
-    if deg > MAX_TURN:
-        deg = MAX_TURN
-
-    outer_velo = float(outer_speed)
-    percent_diff = 0.9875 * (math.exp(-0.016 * deg))
-    inner_velo = percent_diff * outer_velo
-    return inner_velo
+def get_inner_velo(radius, outer_speed):
+    """ Return speed for inner drive wheels. 
+    
+    Parameters
+    -----------
+    radius: float
+    outer_speed: float
+        speed of center wheel on the outside of arc turn
+    
+    Returns
+    ----
+    inner_velo: float
+        Value for motor addresses 0x81, 0x82 in m/s
+    inner_cen_velo: float
+        Value for motor address 0x84 in m/s
+    """
+    inner_velo = outer_speed * (math.sqrt(radius ** 2 - 0.31 * radius + 0.101)\
+        / (radius + 0.155))
+    inner_cen_velo = outer_speed * ((radius - 0.155) / (radius + 0.155))
+    return (inner_velo, inner_cen_velo)
 
 
 def get_arc_time(degree, inner_speed):
+    """     
+    Parameters
+    -----------
+    radius: float
+    outer_speed: float
+        speed of center wheel on the outside of arc turn
+    
+    Returns
+    ----
+    inner_velo: float
+        Value for motor addresses 0x81, 0x82 in m/s
+    inner_cen_velo: float
+        Value for motor address 0x84 in m/s
+    """
     deg = int(degree)
 
     if deg > MAX_TURN:
@@ -281,7 +317,7 @@ def recenter():
         corner.go_to_center()
     
     # chose FL randomly, but should be representative
-    wait_until_move_complete(CORNER_FR)
+    wait_until_move_complete(CORNER_BR)
     for corner in CORNERS:
         corner.stop()
 
@@ -360,9 +396,9 @@ def tank_with_turn(direction, degrees):
 
     tank(direction, degrees)
 
-
-# drives rover straight forward at specified speed for specified distance
 def forward(speed, dist):
+    """ drives rover straight forward at specified speed for specified distance
+    """
     speed = float(speed)
     dist = float(dist)
 
@@ -381,8 +417,10 @@ def forward(speed, dist):
         wheel.stop()
     return 0
 
-# drives rover straight forward at specified speed for specified distance
 def forward_with_stop(speed):
+    """ drives rover straight forward at specified speed for unspecified distance
+    Input [y/yes] for it to stop driving.
+    """
     speed = float(speed)
 
     print("Driving forward at %.4f m/s" % (speed))
@@ -398,9 +436,9 @@ def forward_with_stop(speed):
     stop_all_wheels()
     return 0
 
-
-# drives rover straight backward at specified speed for specified distance
 def backward(speed, dist):
+    """ drives rover straight backward at specified speed for specified distance
+    """
     speed = float(speed)
     dist = float(dist)
 
@@ -412,152 +450,109 @@ def backward(speed, dist):
 
     print("Driving backward at %.4f m/s for %.2f meters" % (speed, howLong))
 
-    direction = "backward"
     for wheel in WHEELS:
-        wheel.set_motor_speed(direction, speed)
+        wheel.set_motor_speed("backward", speed)
     time.sleep(howLong)
     for wheel in WHEELS:
         wheel.stop()
     return 0
 
-# drives rover straight backward at specified speed for specified distance
+
 def backward_with_stop(speed):
+    """ drives rover straight backward at specified speed for unspecified distance
+    Input [y/yes] for it to stop driving.
+    """
     speed = float(speed)
 
     print("Driving backward at %.4f m/s" % (speed))
 
-    direction = "backward"
     for wheel in WHEELS:
-        wheel.set_motor_speed(direction, speed)
+        wheel.set_motor_speed("backward", speed)
     
     stopper = input("stop?  ")
-    while stopper != "y" and stopper != "yes":
+    while stopper not in ['y', 'yes']:
         stopper = input("stop? (y/n):  ")
 
     stop_all_wheels()
     return 0
 
-
-# rotates corner wheels to guessed positions for an arc turn
-# inner wheel rotation > outer wheel rotation
-#   - inner wheels rotated to their fully turned position (36)
-#   - outer wheels rotated slightly less than the inner wheels
-#     done by reducing wheel rotation speed
-#   (what that angle and speed is, we don't know :P)
-def generic_turn(direction):
-    # need to change this to use go to position
-    if direction == "right":  # right turn, left wheels outer, right inner
-        CORNER_FL.set_motor_register_speed("forward", 9)
-        CORNER_FR.set_motor_register_speed("forward", CALIBRATION_SPEED)
-        CORNER_BL.set_motor_register_speed("backward", 9)
-        CORNER_BR.set_motor_register_speed("backward", 23)
-        # <comment from GROVER:> BR this one rotates beyond its stopper which we want to avoid
-    else:  # left turn, right CORNERs outer
-        CORNER_FL.set_motor_register_speed("backward", CALIBRATION_SPEED)
-        CORNER_FR.set_motor_register_speed("backward", 10)
-        CORNER_BL.set_motor_register_speed("forward", CALIBRATION_SPEED)
-        CORNER_BR.set_motor_register_speed("forward", 8)
-
-    time.sleep(3)
-
-    for corner in CORNERS:
-        corner.stop()
-
-    return 0
-
-
-# turns wheels according to turning direction using generic function (not user specified)
-# directs command to arc turn speeds and which direction (drive direction, forward/backward)
-def turn(speed, direction, dist, drive):
-    generic_turn(direction)
+def turn(radius, direction, dist, drive):
+    """ Start an arc turn
+    
+    Parameters
+    ----
+    radius: float
+    direction: str
+        Which way will it turn, 'right' or 'left'
+    dist: float
+    drive: str
+        Which driving direction, 'forward' or 'backward'
+    
+    Returns
+    -----
+    int: 0 for completion, -1 for errors
+    """
+    direction = direction.lower()
+    drive = drive.lower()
+    if 0.464 > radius or radius > 300 or \
+        direction not in ["right", "left"] or \
+        drive not in ['forward', 'backward']: 
+        return -1 
+    set_arc_wheels(direction, radius)
     distance = float(dist)
+    return arc_turn_drive(direction, radius, distance, drive)
+    
 
-    if dist == 0:
-        if drive == "forward":
-            return arc_turn_forward(direction, speed)
-        else:
-            return arc_turn_backward(direction, speed)
-    else:
-        if drive == "forward":
-            return arc_turn_forward_dist(direction, speed, distance)
-        else:
-            return arc_turn_backward_dist(direction, speed, distance)
-    return 0
-
-
-# drives rover forward for arc turns at specified speed until user tells it to stop
-# at some point can have a specified distance to turn until, so time limit used from there
-def arc_turn_forward(direction, speed):
-    outer_speed = float(speed)
-    inner_speed = get_inner_velo(MAX_TURN, outer_speed)
-
-    if direction == "right":  # right turn: right inner, left outer
-        set_speed_left_side("forward", outer_speed)
-        set_speed_right_side("forward", inner_speed)
-    else:  # left turn: left inner, right outer
-        set_speed_left_side("forward", inner_speed)
-        set_speed_right_side("forward", outer_speed)
-
-    stopper = input("stop?  ")
-    while stopper != "y" and stopper != "yes":
-        stopper = input("stop? (y/n):  ")
-
-    stop_all_wheels()
-
-    return 0
-
-
-# same as above but backwards
-def arc_turn_backward(direction, speed):
-    outer_speed = float(speed)
-    inner_speed = get_inner_velo(MAX_TURN, outer_speed)
-
-    if direction == "right":  # right turn: right inner, left outer
-        set_speed_left_side("backward", outer_speed)
-        set_speed_right_side("backward", inner_speed)
-    else:  # left turn: left inner, right outer
-        set_speed_left_side("backward", inner_speed)
-        set_speed_right_side("backward", outer_speed)
-
-    stopper = input("stop?  ")
-    while stopper != "y" and stopper != "yes":
-        stopper = input("stop?  ")
-
-    stop_all_wheels()
-
-    return 0
-
+def set_arc_wheels(direction, radius) -> None:
+    """ Turns corner wheels to position to make arc turn
+    
+    Parameters
+    ----
+    direction: str
+        Turn which way, needs to be 'right' or 'left'
+    radius: float
+        Radius of circle, measured to center rover
+    """
+    recenter()
+    outer_deg = math.degrees(math.atan(R_HEIGHT / (radius + R_OUTER / 2)))
+    inner_deg = math.degrees(math.atan(R_HEIGHT / (radius - R_OUTER / 2)))
+    CORNER_FL.rotate_n_degrees(direction, outer_deg if direction == 'right' else -1 * inner_deg)
+    CORNER_FR.rotate_n_degrees(direction, -1 * outer_deg if direction == 'left' else inner_deg)
+    CORNER_BL.rotate_n_degrees(direction, -1 * outer_deg if direction == 'right' else inner_deg)
+    CORNER_BR.rotate_n_degrees(direction, outer_deg if direction == 'left' else -1 * inner_deg)
 
 # drives rover forward for arc turn at specified speed for specified distance
-def arc_turn_forward_dist(direction, speed, dist):
-    outer_speed = float(speed)
-    inner_speed = get_inner_velo(MAX_TURN, outer_speed)
-    timer = get_time(speed, dist)
+def arc_turn_drive(direction, radius, dist, drive):
+    """ Process of doing an arc turn. Has constant speed determined by constants at top of file.
+    Make use of Motor.move_distance function
+    
+    Parameters
+    -----------
+    direction: str
+        specifies which way to turn, needs to be either 'right' or 'left'
+    radius: float
+        distance from center rover to center circle for the arc that is about to be traveled
+    dist: float
+        arc length to traverse
+    drive: str
+        which way to spin wheels, 'forward' or 'backward'
+        
+    Returns
+    -----------
+    int
+        0 on successful completion, -1 if errors in parameters
+    """
+    out_cen_speed = MAX_SPEED_VEL
+    out_speed = out_cen_speed * (math.sqrt(radius ** 2 + 0.31 * radius + 0.101)\
+        / (radius + 0.155))
+    inner_speed, inner_cen_speed = get_inner_velo(MAX_TURN, out_cen_speed)
+    timer = get_time(out_cen_speed, dist)
     if direction == "right":  # right turn: right inner, left outer
-        set_speed_left_side("forward", outer_speed)
-        set_speed_right_side("forward", inner_speed)
+        set_speed_left_side(drive, out_cen_speed, out_speed)
+        set_speed_right_side(drive, inner_cen_speed, inner_speed)
     else:  # left turn: left inner, right outer
-        set_speed_left_side("forward", inner_speed)
-        set_speed_right_side("forward", outer_speed)
-
-    time.sleep(timer)
-
-    stop_all_wheels()
-
-    return 0
-
-
-# drives rover backward for arc turn at specified speed for specified distance
-def arc_turn_backward_dist(direction, speed, dist):
-    outer_speed = float(speed)
-    inner_speed = get_inner_velo(MAX_TURN, outer_speed)
-    timer = get_time(speed, dist)
-    if direction == "right":  # right turn: right inner, left outer
-        set_speed_left_side("backward", outer_speed)
-        set_speed_right_side("backward", inner_speed)
-    else:  # left turn: left inner, right outer
-        set_speed_left_side("backward", inner_speed)
-        set_speed_right_side("backward", outer_speed)
+        set_speed_left_side(drive, inner_cen_speed, inner_speed)
+        set_speed_right_side(drive, out_cen_speed, out_speed)
 
     time.sleep(timer)
 
