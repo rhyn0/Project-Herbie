@@ -476,8 +476,9 @@ def backward_with_stop(speed):
     stop_all_wheels()
     return 0
 
-def turn(radius, direction, dist, drive):
+def turn(drive, direction, radius, dist):
     """ Start an arc turn
+    Command format: arc drive direction radius dist
     
     Parameters
     ----
@@ -494,6 +495,10 @@ def turn(radius, direction, dist, drive):
     """
     direction = direction.lower()
     drive = drive.lower()
+    radius = float(radius)
+    if not all([motor.calibrated for motor in CORNERS]):
+        print("Motors not calibrated")
+        return -1
     if 0.464 > radius or radius > 300 or \
         direction not in ["right", "left"] or \
         drive not in ['forward', 'backward']: 

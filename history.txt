@@ -1,0 +1,4 @@
+1. calibrate
+2. forward .05 1
+3. calibrate
+4. meters all 1

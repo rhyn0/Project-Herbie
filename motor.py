@@ -170,7 +170,6 @@ class CornerMotor(Motor):
             # turn to left-most position, store left-most encoder value in global var
             with lock:
                 prev_encoder = self.encoder_value()
-                print("starting encoder value: " + str(prev_encoder))
                 self.set_motor_register_speed("backward", CALIBRATION_SPEED)
                 start = time.time()
                 time.sleep(0.1)

@@ -67,10 +67,11 @@ class COMMAND_BOOK:
             return commands.calibrate_one(command[1])
 
         elif command[0] == "arc" and len(command) == 5:
-            return commands.turn(command[4], command[3], 0, command[2])
+            return commands.turn(command[1], command[2], command[3], command[4])
 
-        elif command[0] == "arc" and len(command) == 6:
-            return commands.turn(command[4], command[3], command[5], command[2])
+        
+        #elif command[0] == "arc" and len(command) == 6:
+        #    return commands.turn(command[4], command[3], command[5], command[2])
 
         elif command[0] == "recenter":
             return commands.recenter()
