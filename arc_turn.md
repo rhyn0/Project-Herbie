@@ -1,16 +1,21 @@
-# Herbie Skeleton Arc Turn Calculations
-
-## By Ryan Ozawa 6/5/2021
+---
+title: "Herbie Skeleton Arc Turn Calculations"
+author: Ryan Ozawa
+date: June 5, 2021
+output:
+  pdf_document:
+    path: /Project-Herbie/arc_turn.pdf
+---
 
 ### Given Information
 
-\begin{aligned}
-x_1 = 310mm = 0.310m; \\
-x_2=400mm = 0.40m; \\
-y = 556mm = 0.556m \\
-\end{aligned}
+$$
+x_1 = 310mm = 0.310m;
+x_2=400mm = 0.40m;
+y = 556mm = 0.556m
+$$
 
-![thing](herbie-measure-layout.png)
+![Herbie Dimension Layout](herbie-measure-layout.png)
 
 We will denote $r$ as the distance from center rover to center of the circle that the rover travels along during its turn.
 
@@ -62,10 +67,10 @@ $$
 
 $$ r\_{min} = X + \frac {x_1}{2} $$(3)
 
-The physical limits of the wheels is a $45\degree$ therefore:
+The physical limits of the wheels is a 45 degree therefore:
 
 $$
-r_{min} = \frac {x_1}{2} + \frac {\frac {y}{2}}{tan(\theta)} = \frac {0.31m}{2} + \frac {\frac {0.556}{2}}{tan(45\degree)} = 0.433m
+r_{min} = \frac {x_1}{2} + \frac {\frac {y}{2}}{tan(\theta)} = \frac {0.31m}{2} + \frac {\frac {0.556}{2}}{tan(45)} = 0.433m
 $$
 
 Since we don't want to drive the wheels to physical limits all the time, we will back off of it and set the lower bound of R to be 0.45m.
