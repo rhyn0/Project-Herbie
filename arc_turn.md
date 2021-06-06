@@ -4,11 +4,11 @@
 
 ### Given Information
 
-$$
+\begin
 x_1 = 310mm = 0.310m;
-    x_2=400mm = 0.40m;
-    y = 556mm = 0.556m
-$$
+x_2=400mm = 0.40m;
+y = 556mm = 0.556m
+\end{alignment}
 
 ![thing](herbie-measure-layout.png)
 
