@@ -1,4 +1,6 @@
 import time
+import contextlib
+
 CALIBRATION_TIME = 9
 CALIBRATION_SPEED = 25
 SLOWER_CALIBRATION_SPEED = 5
@@ -9,7 +11,8 @@ INVALID_ENC = 1600
 GOTO_SPEED = 1750
 GOTO_FR = 4542
 ACCEL = DECCEL = 1000
-ANGULAR_RANGE = 90 # was 72 for Herbie Mk1
+ANGULAR_RANGE = 90  # was 72 for Herbie Mk1
+
 
 class Motor:
     def __init__(self, rc, rc_addr, motor_ndx):
@@ -19,19 +22,23 @@ class Motor:
 
     def go_to_position(self, position):
         if self.motor_ndx == 1:
-            self.rc.SpeedAccelDeccelPositionM1(self.rc_addr,ACCEL,GOTO_SPEED,DECCEL,position,1)
+            self.rc.SpeedAccelDeccelPositionM1(
+                self.rc_addr, ACCEL, GOTO_SPEED, DECCEL, position, 1
+            )
         else:
-            self.rc.SpeedAccelDeccelPositionM2(self.rc_addr,ACCEL,GOTO_SPEED,DECCEL,position,1)
+            self.rc.SpeedAccelDeccelPositionM2(
+                self.rc_addr, ACCEL, GOTO_SPEED, DECCEL, position, 1
+            )
 
     def move_distance(self, distance, speed=GOTO_SPEED):
-        # if distance negative, make speed negative 
+        # if distance negative, make speed negative
         if distance < 0:
             speed *= -1
             distance *= -1
         if self.motor_ndx == 1:
-            self.rc.SpeedDistanceM1(self.rc_addr,speed,distance,1)
+            self.rc.SpeedDistanceM1(self.rc_addr, speed, distance, 1)
         else:
-            self.rc.SpeedDistanceM2(self.rc_addr,speed,distance,1)
+            self.rc.SpeedDistanceM2(self.rc_addr, speed, distance, 1)
 
     """# NOTE - untested as of 2/17/2021
     def move_velocity(self, direction, speed=GOTO_SPEED):
@@ -42,7 +49,7 @@ class Motor:
             self.rc.SpeedM1(self.rc_addr,speed)
         else:
             self.rc.SpeedM2(self.rc_addr,speed)"""
-        
+
     def encoder_value(self):
         if self.motor_ndx == 1:
             response = self.rc.ReadEncM1(self.rc_addr)
@@ -50,7 +57,7 @@ class Motor:
             response = self.rc.ReadEncM2(self.rc_addr)
 
         return response[1]
-    
+
     def set_encoder_value(self, value):
         if self.motor_ndx == 1:
             response = self.rc.SetEncM1(self.rc_addr, value)
@@ -58,15 +65,15 @@ class Motor:
             response = self.rc.SetEncM2(self.rc_addr, value)
 
         return response[1]
-    
+
     def stop(self):
-        self.set_motor_register_speed('forward', 0)
-        self.set_motor_register_speed('backward', 0)
+        self.set_motor_register_speed("forward", 0)
+        self.set_motor_register_speed("backward", 0)
 
     def set_motor_speed(self, direction, speed):
         """sets the speed of given a motor macro [WHEEL_FR, etc.] a direction [forward, backward] and a speed (m/s)"""
         reg_speed = self.calculate_reg_speed(speed)
-        self.set_motor_register_speed(direction,reg_speed)
+        self.set_motor_register_speed(direction, reg_speed)
 
     def set_motor_register_speed(self, direction, reg_speed):
         if reg_speed > 80:
@@ -82,13 +89,12 @@ class Motor:
                 self.rc.BackwardM1(self.rc_addr, reg_speed)
             else:
                 self.rc.BackwardM2(self.rc_addr, reg_speed)
-    
+
     def move_is_complete(self):
         buffer = self.rc.ReadBuffers(self.rc_addr)
         if buffer[self.motor_ndx] == 128:
             return True
         return False
-
 
     @staticmethod
     def calculate_reg_speed(speed):
@@ -97,6 +103,7 @@ class Motor:
         if result2 > 127:
             result2 = 127
         return result2  # velo = 0.0009(reg value) - 0.002
+
 
 class CornerMotor(Motor):
     def __init__(self, rc, rc_addr, motor_ndx):
@@ -107,13 +114,19 @@ class CornerMotor(Motor):
         self.center_raw = 0
         self.total = 0
         self.calibrated = False
-        self.encoders_per_degree = None   # ratio of encoder values 
-    
+        self.encoders_per_degree = None  # ratio of encoder values
+
     def __repr__(self):
-        return "Addr: {}, left: {}, right: {}, calibrated?: {}".format(self.rc_addr, self.left_most, self.right_most, self.calibrated)
+        return "Addr: {}, left: {}, right: {}, calibrated?: {}".format(
+            self.rc_addr, self.left_most, self.right_most, self.calibrated
+        )
 
     def go_to_position(self, position):
-        ''' overrided to ensure position doesn't go out of bounds '''
+        """Overrided to ensure position doesn't go out of bounds
+        """
+        if not self.calibrated:
+            print(f"Cannot perform action, motor RC-{self.rc_addr} is not calibrated!")
+            return -1
         if position > self.right_most:
             print("position (%d) out of range, using rightmost instead" % position)
             position = self.right_most
@@ -122,51 +135,65 @@ class CornerMotor(Motor):
             position = self.left_most
 
         if self.motor_ndx == 1:
-            self.rc.SpeedAccelDeccelPositionM1(self.rc_addr,ACCEL,GOTO_SPEED,DECCEL,position,1)
+            self.rc.SpeedAccelDeccelPositionM1(
+                self.rc_addr, ACCEL, GOTO_SPEED, DECCEL, position, 1
+            )
         else:
-            self.rc.SpeedAccelDeccelPositionM2(self.rc_addr,ACCEL,GOTO_SPEED,DECCEL,position,1)
-    
-    def go_to_left_most(self):
+            self.rc.SpeedAccelDeccelPositionM2(
+                self.rc_addr, ACCEL, GOTO_SPEED, DECCEL, position, 1
+            )
+
+    def go_to_left_most(self) -> int:
         if not self.calibrated:
-            print("Cannot perform action, motor is not calibrated!")
-            return
+            print(f"Cannot perform action, motor RC-{self.rc_addr} is not calibrated!")
+            return -1
         self.go_to_position(self.left_most)
-        
-    def go_to_right_most(self):
+        return 0
+
+    def go_to_right_most(self) -> int:
         if not self.calibrated:
-            print("Cannot perform action, motor is not calibrated!")
-            return
+            print(f"Cannot perform action, motor RC-{self.rc_addr} is not calibrated!")
+            return -1
         self.go_to_position(self.right_most)
-    
-    def go_to_center(self):
+        return 0
+
+    def go_to_center(self) -> int:
         if not self.calibrated:
-            print("Cannot perform action, motor is not calibrated!")
-            return
+            print(f"Cannot perform action, motor RC-{self.rc_addr} is not calibrated!")
+            return -1
         self.go_to_position(self.center)
-    
-    def rotate_n_degrees(self, direction, angle):
+        return 0
+
+    def rotate_n_degrees(self, direction, angle) -> int:
         if not self.calibrated:
-            print("Cannot perform action, motor is not calibrated!")
-            return
-        
+            print(f"Cannot perform action, motor RC-{self.rc_addr} is not calibrated!")
+            return -1
+        direction = direction.lower()
         encoder_distance = int(self.encoders_per_degree * angle)
         current_position = self.encoder_value()
-        
+
         if direction == "right":
             target_position = current_position + encoder_distance
-        else:
+        elif direction == "left":
             target_position = current_position - encoder_distance
-
-        print("Rotating %s for %d degrees" % (direction, angle))
+        else:
+            print(f"Direction {direction} is not a valid way of turning")
+            return -1
+        print(f"Rotating {direction} for {angle} degrees")
         self.go_to_position(target_position)
+        return 0
 
-
-
-    def calibrate(self, lock):
+    def calibrate(self, lock=contextlib.nullcontext()):
+        """Calibrates a wheel(s), if lock is a threading.Lock will allow
+        for multiple wheel calibration in almost multithreaded fashion.
+        If only one wheel is being calibrated, lock is an optional argument
+        """
         left_most = 0
         right_most = 0
         runs = 0
-        while (right_most - left_most) < 1800 and runs < 3: # max range is ~2000, run until this is about right
+        while (
+            right_most - left_most
+        ) < 1800 and runs < 3:  # max range is ~2000, run until this is about right
             # turn to left-most position, store left-most encoder value in global var
             with lock:
                 prev_encoder = self.encoder_value()
@@ -178,7 +205,7 @@ class CornerMotor(Motor):
                     time.sleep(0.05)
                     curr_encoder = self.encoder_value()
                     if abs(curr_encoder - prev_encoder) < 3:
-                        #print(self, "breaking on encoder condition")
+                        # print(self, "breaking on encoder condition")
                         i += 1
                     if i == 3:
                         break
@@ -195,7 +222,7 @@ class CornerMotor(Motor):
                     time.sleep(0.05)
                     curr_encoder = self.encoder_value()
                     if abs(curr_encoder - prev_encoder) < 3:
-                        #print(self, "breaking on encoder condition, second time")
+                        # print(self, "breaking on encoder condition, second time")
                         break
                     prev_encoder = curr_encoder
                 self.stop()
@@ -210,18 +237,22 @@ class CornerMotor(Motor):
                     time.sleep(0.05)
                     curr_encoder = self.encoder_value()
                     if abs(curr_encoder - prev_encoder) < 3:
-                        #print(self, "breaking on encoder condition, forward")
+                        # print(self, "breaking on encoder condition, forward")
                         break
                     prev_encoder = curr_encoder
-                    #print(prev_encoder)
+                    # print(prev_encoder)
 
                 self.stop()
-                right_most = self.encoder_value()   # store right-most encoder val, calculate center
+                right_most = (
+                    self.encoder_value()
+                )  # store right-most encoder val, calculate center
             runs += 1
-            #print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
-            
-        self.left_most = left_most + 50 
-        self.right_most = right_most - 50 # edit range of motion so arms don't hit physical stops in most cases
+            # print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
+
+        self.left_most = left_most + 50
+        self.right_most = (
+            right_most - 50
+        )  # edit range of motion so arms don't hit physical stops in most cases
         self.center = (right_most + left_most) // 2
 
         self.calibrated = True
