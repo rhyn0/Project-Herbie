@@ -249,10 +249,10 @@ class CornerMotor(Motor):
             runs += 1
             # print("left, right", left_most, right_most, "DIFFERENCE: ", right_most - left_most)
 
+        # edit range of motion so arms don't hit physical stops in most cases
         self.left_most = left_most + 50
-        self.right_most = (
-            right_most - 50
-        )  # edit range of motion so arms don't hit physical stops in most cases
+        self.right_most = right_most - 50
+
         self.center = (right_most + left_most) // 2
 
         self.calibrated = True
