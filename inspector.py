@@ -19,17 +19,20 @@ def print_docs(module):
 
         doc = inspect.getdoc(child[1])
         if doc:
-            data.append(str(child[0]) + "\n" + str(doc) + "\n\n")
+            data.append(str(child[0]).title() + "\n\t" + str(doc) + "\n\n\n")
             # print(child[0], doc, sep = '\n', end='\n\n')
+        else:
+            data.append(str(child[0]).title() + "\n\tNo documenation provided.\n\n\n")
     return data
 
 
 if __name__ == "__main__":
     import commands
-    import motor
+    from motor import Motor, CornerMotor
 
     fn = "Manual.txt"
     with open(fn, "w") as fp:
-        for pack in [commands, motor]:
+        for pack in [commands, Motor, CornerMotor]:
+            fp.write(str(pack.__name__).upper() + "\n---------------\n\n")
             fp.writelines(print_docs(pack))
 

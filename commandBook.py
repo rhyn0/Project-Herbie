@@ -1,4 +1,4 @@
-from . import commands
+import commands
 
 MAX_TURN = 36  # max L / R corner wheel rotation
 
@@ -10,11 +10,12 @@ to add new func / command:
 
 # dumps this info when user enters help cuz I'm dumb and can't remember every command and its field
 def print_message():
-    # TODO: make a file to dump
-    pass
+    with open("DESCRIPTIONS.txt", "r") as f:
+        for line in f:
+            print(line, end='')
 
 
-def command_calibrate(tokn: list[str]):
+def command_calibrate(tokn: list):
     """Handles all versions of a calibrate command
     
     Returns
@@ -34,7 +35,7 @@ def command_calibrate(tokn: list[str]):
     return 0
 
 
-def command_backward(tokn: list[str]):
+def command_backward(tokn: list):
     """Handles all versions of backward commands
     Types: {'backward speed', DEPRECATED: 'backward speed distance'}
     
@@ -59,7 +60,7 @@ def command_backward(tokn: list[str]):
         return -1
 
 
-def command_forward(tokn: list[str]):
+def command_forward(tokn: list):
     """Handles all versions of forward commands. 
     Types: {'forward speed', DEPRECATED: 'forward speed distance'}
     
@@ -135,9 +136,9 @@ def parseCommand(command):  # try-except commented out for debugging purposes
             return -1
         return commands.move_default_velocity(command[1], command[2])
 
-    elif command[0] == "auto":
-        # format: auto
-        return commands.autonomous()
+    # elif command[0] == "auto":
+    #     # format: auto
+    #     return commands.autonomous()
 
     elif command[0] == "rotate":
         # format: rotate wheel-name direction angle

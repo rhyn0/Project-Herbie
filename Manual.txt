@@ -1,0 +1,473 @@
+COMMANDS
+---------------
+
+Arc_Turn_Drive
+	Process of doing an arc turn. Has constant speed determined by constants at top of file.
+Make use of Motor.move_distance function
+
+Parameters
+-----------
+direction: str
+    specifies which way to turn, needs to be either 'right' or 'left'
+radius: float
+    distance from center rover to center circle for the arc that is about to be traveled
+dist: float
+    arc length to traverse
+drive: str
+    which way to spin wheels, 'forward' or 'backward'
+    
+Returns
+-----------
+int
+    0 on successful completion, -1 if errors in parameters
+
+
+Autonomous
+	No documenation provided.
+
+
+Backward
+	drives rover straight backward at specified speed for specified distance
+
+Parameters
+---------
+speed: float
+dist: float
+    distance
+    
+Returns
+--------
+0 on success, -1 on error. Prints error message to stdout
+
+
+Backward_With_Stop
+	drives rover straight backward at specified speed for unspecified distance
+Input [y/yes] for it to stop driving.
+
+Parameters
+------
+speed: float
+
+Returns
+-----
+0 no matter what
+
+
+Calibrate_All
+	Spawns individual threads for each Roboclaw controller and calibrates each
+Uses multithread.Lock to share the resource of single TXD/RXD line
+
+Returns
+----
+0
+    Always. If there is any visual misalignment it may be due to surface it was calibrated on
+
+
+Calibrate_One
+	Calibrate a single CornerMotor, no need to pass a Lock
+
+Returns
+----
+0
+    success
+-1
+    on error. Will print associated error to stdout
+
+
+Degrees_To_Duration
+	If degrees is less than or equal to 0, returns 0. 
+Will return a mod 360 value, so wheels don't try to make multiple revolutions
+
+Parameters
+------
+degrees: float
+    degrees to turn
+    
+Returns
+----
+duration: float
+    time value that the wheel will be turned
+degrees: float
+    degree value modded, 0 or greater
+
+
+Distance_Tank
+	Executes the actual wheel spinning to cause rover to rotate.
+This one uses distance commands
+TESTING 6/7/2021 -Ryan Ozawa
+
+
+Forward
+	drives rover straight forward at specified speed for specified distance
+Uses time based command
+
+Parameters
+------
+speed: float
+dist: float
+    distance
+Returns
+-----
+0 on success, -1 on error. Prints error msg to stdout
+
+
+Forward_With_Stop
+	drives rover straight forward at specified speed until user says to stop
+Input [y/yes] for it to stop driving.
+
+Parameters
+------
+speed: float
+
+Returns
+-----
+0 no matter what
+
+
+Get_Inner_Velo
+	Return speed for inner drive wheels. 
+See arc_turn.pdf
+for math proof
+
+Parameters
+-----------
+radius: float
+outer_speed: float
+    speed of center wheel on the outside of arc turn
+
+Returns
+----
+inner_velo: float
+    Value for motor addresses 0x81, 0x82 in m/s
+inner_cen_velo: float
+    Value for motor address 0x84 in m/s
+
+
+Get_Time
+	Simple time = dist / speed calculation
+    
+
+
+Get_Velo_Ms
+	converts register value to velocity in m/s
+Opposite conversion to motor.calculate_reg_speed
+
+
+Kill_All
+	Stops all motors
+    
+
+
+Move_Default_Velocity
+	Moves a specific wheel or all of them at 0.1 m/s velocity indefinitely. 
+NOTE - untested as of 2/17/2021
+
+Parameters
+------
+motor_name : str
+    'all' for driving all Motors. string representing the Motor, see ALL_WHEELS for corresponding name. 
+direction : str
+    {'left', 'right'}
+    
+Returns
+----
+int
+    0 on success, -1 for errors and prints the associated error to stdout
+
+
+Move_Distance_Meters
+	Moves a singular motor, or all motors, a certain distance in meters
+
+Parameters
+------
+motor_name : str
+    string representing the Motor, see ALL_WHEELS for corresponding name
+distance : float
+    number of degrees to turn that wheel
+    
+Returns
+----
+int
+    0 on success, -1 for errors and prints the associated error
+
+
+Position
+	Moves a single wheel to a certain encoder value
+
+Parameters
+------
+motor_name : str
+    string representing the Motor, see ALL_WHEELS for corresponding name
+position : int
+    encoder value to rotate to
+    
+Returns
+----
+int
+    0 on success, -1 for errors and prints the associated error
+
+
+Print_Encoders
+	Prints out all the encoder register values
+    
+
+
+Recenter
+	Moves all CornerMotors to their calibrated center
+    
+
+
+Rotate
+	Rotates a single CornerMotor given degrees in given direction
+
+Parameters
+------
+motor_name : str
+    string representing the CornerMotor, see ALL_WHEELS for corresponding name
+direction : str
+    {'left', 'right'}
+angle : float
+    number of degrees to turn that wheel
+    
+Returns
+----
+int
+    0 on success, -1 for errors and prints the associated error
+
+
+Rotate_Max
+	Chooses a single corner wheel to rotate to the maximum value
+Corner wheel must be selected, must be calibrated
+Direction must be right or left
+
+Parameters
+------
+motor_name : str
+    'all' for driving all Motors. string representing the Motor, see ALL_WHEELS for corresponding name. 
+direction : str
+    {'left', 'right'}
+    
+Returns
+----
+int
+    0 on success, -1 for errors and prints the associated error
+
+
+Set_Arc_Wheels
+	Turns corner wheels to position to make arc turn
+
+Parameters
+----
+direction: str
+    Turn which way, needs to be 'right' or 'left'
+radius: float
+    Radius of circle, measured to center rover
+
+
+Set_Speed_Left_Side
+	sets all left side wheels to given a direction [forward, backward] and speed (m/s)
+Center wheel speed is different to allow arc turns
+
+
+Set_Speed_Right_Side
+	sets all right side wheels to given a direction [forward, backward] and speed (m/s)
+Center wheel speed is different to allow arc turns
+
+
+Stop_All_Wheels
+	Stops all drive wheels on call
+    
+
+
+Tank
+	Executes the actual wheel spinning to cause rover to rotate
+    
+
+
+Tank_With_Turn
+	Sets the CornerWheels to proper alignment to do the tankturn
+
+Parameters
+----
+direction: str
+    {'left','right'}
+degrees: float
+    number of degrees to turn
+    
+Returns
+----
+0 on success, -1 on errors. Prints error msg to stdout
+
+
+Turn
+	Start an arc turn
+Command format: arc drive direction radius dist
+
+Parameters
+----
+drive: str
+    Which driving direction, 'forward' or 'backward'
+direction: str
+    Which way will it turn, 'right' or 'left'
+radius: float
+    radius of circle to drive along
+dist: float
+    arc length distance to travel
+
+
+Returns
+-----
+int: 0 for completion, -1 for errors. Print error message to stdout 
+
+
+Wait_Until_All_Complete
+	Waits until every motor is done moving before returning
+    
+
+
+Wait_Until_Move_Complete
+	Waits until a specific motor is done moving before returning
+Parameters
+------
+motor: {Motor, CornerMotor}
+    specific Motor to wait for
+
+
+Wait_Until_Position
+	Waits until a specific motor moves within a certain threshold
+to a certain encoder position
+
+UNUSED as of 6/6/2021
+
+Parameters
+------
+position: int
+    encoder value to wait until
+motor: {Motor, CornerMotor}
+    specific Motor to wait for
+
+
+Wait_Until_Stopped
+	Waits until a specific motor stops
+
+UNUSED as of 6/6/2021
+
+Parameters
+------
+motor: {Motor, CornerMotor}
+    specific Motor to wait for
+
+
+MOTOR
+---------------
+
+__Init__
+	Initialize self.  See help(type(self)) for accurate signature.
+
+
+Calculate_Reg_Speed
+	No documenation provided.
+
+
+Encoder_Value
+	No documenation provided.
+
+
+Go_To_Position
+	No documenation provided.
+
+
+Move_Distance
+	No documenation provided.
+
+
+Move_Is_Complete
+	No documenation provided.
+
+
+Set_Encoder_Value
+	No documenation provided.
+
+
+Set_Motor_Register_Speed
+	No documenation provided.
+
+
+Set_Motor_Speed
+	sets the speed of given a motor macro [WHEEL_FR, etc.] a direction [forward, backward] and a speed (m/s)
+
+
+Stop
+	No documenation provided.
+
+
+CORNERMOTOR
+---------------
+
+__Init__
+	Initialize self.  See help(type(self)) for accurate signature.
+
+
+__Repr__
+	Return repr(self).
+
+
+Calculate_Reg_Speed
+	No documenation provided.
+
+
+Calibrate
+	Calibrates a wheel(s), if lock is a threading.Lock will allow
+for multiple wheel calibration in almost multithreaded fashion.
+If only one wheel is being calibrated, lock is an optional argument
+
+
+Encoder_Value
+	No documenation provided.
+
+
+Go_To_Center
+	No documenation provided.
+
+
+Go_To_Left_Most
+	No documenation provided.
+
+
+Go_To_Position
+	Overrided to ensure position doesn't go out of bounds
+        
+
+
+Go_To_Right_Most
+	No documenation provided.
+
+
+Move_Distance
+	No documenation provided.
+
+
+Move_Is_Complete
+	No documenation provided.
+
+
+Rotate_N_Degrees
+	No documenation provided.
+
+
+Set_Encoder_Value
+	No documenation provided.
+
+
+Set_Motor_Register_Speed
+	No documenation provided.
+
+
+Set_Motor_Speed
+	sets the speed of given a motor macro [WHEEL_FR, etc.] a direction [forward, backward] and a speed (m/s)
+
+
+Stop
+	No documenation provided.
+
+

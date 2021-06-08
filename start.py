@@ -1,6 +1,6 @@
 from os import path
-from . import commands
-from . import commandBook
+import commands
+import commandBook
 
 
 """ what user sees: prompt loop where user can send commands to move rover """
@@ -73,6 +73,8 @@ def getHistoryLine():
 
 
 def fileInput(file):
+    """Reads in a file of commands and executes them one by one
+    """
     f = open(file, "r")
     for line in f:
         line = line.strip()
@@ -82,21 +84,18 @@ def fileInput(file):
         # instruction set with blank lines
 
         command = line.split(" ")
-        if command[0] == "calibrate" and len(command) == 1:
-            if commandBook.parseCommand(command) == -1:
-                print("For more info, enter help")
-            continue
         if command[0] == "help":
             commandBook.print_message()
         else:
             if commandBook.parseCommand(command) == -1:
                 print("For more info, enter help")
         print("")
+    f.close()
 
 
 def main():
     command = input("> ")
-    while command != "Q" and command != "q":
+    while command.lower() != "q":
         if path.isfile(command):
             fileInput(command)
             command = input("> ")

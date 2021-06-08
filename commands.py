@@ -2,8 +2,8 @@ import time
 import math
 import threading
 from typing import Union
-from . import roboclaw_3
-from . import motor
+import roboclaw_3
+import motor
 
 # certain type hints need both types of Motor, use this
 T = Union[motor.Motor, motor.CornerMotor]
@@ -48,13 +48,13 @@ CORNER_FR = motor.CornerMotor(rc, RC_ADDR_FR, 2)
 CORNER_BL = motor.CornerMotor(rc, RC_ADDR_BL, 2)
 CORNER_BR = motor.CornerMotor(rc, RC_ADDR_BR, 2)
 
-CORNERS: list[motor.CornerMotor] = [CORNER_FL, CORNER_FR, CORNER_BL, CORNER_BR]
+CORNERS: list = [CORNER_FL, CORNER_FR, CORNER_BL, CORNER_BR]
 
-WHEELS: list[motor.Motor] = [WHEEL_FL, WHEEL_FR, WHEEL_ML, WHEEL_MR, WHEEL_BL, WHEEL_BR]
-WHEELS_LEFT: list[motor.Motor] = [WHEEL_FL, WHEEL_ML, WHEEL_BL]
-WHEELS_RIGHT: list[motor.Motor] = [WHEEL_FR, WHEEL_MR, WHEEL_BR]
+WHEELS: list = [WHEEL_FL, WHEEL_FR, WHEEL_ML, WHEEL_MR, WHEEL_BL, WHEEL_BR]
+WHEELS_LEFT: list = [WHEEL_FL, WHEEL_ML, WHEEL_BL]
+WHEELS_RIGHT: list = [WHEEL_FR, WHEEL_MR, WHEEL_BR]
 
-ALL_MOTORS: dict[str, T] = {
+ALL_MOTORS: dict = {
     "wheel_fr": WHEEL_FR,
     "wheel_fl": WHEEL_FL,
     "wheel_ml": WHEEL_ML,
@@ -117,9 +117,9 @@ def get_velo_ms(speed: int) -> float:
 
 
 # for arc turns
-def get_inner_velo(radius: float, outer_speed: float) -> tuple[float, float]:
+def get_inner_velo(radius: float, outer_speed: float) -> tuple:
     """ Return speed for inner drive wheels. 
-    See https://github.com/rhyn0/Project-Herbie/blob/b9147a7fca267b49baab922941360c686117fd71/arc_turn.pdf 
+    See arc_turn.pdf
     for math proof
     
     Parameters
@@ -462,7 +462,7 @@ def wait_until_stopped(motor) -> None:
     time.sleep(SLEEP_TIME)
 
 
-def degrees_to_duration(degrees: float) -> tuple[float, float]:
+def degrees_to_duration(degrees: float) -> tuple:
     """If degrees is less than or equal to 0, returns 0. 
     Will return a mod 360 value, so wheels don't try to make multiple revolutions
     

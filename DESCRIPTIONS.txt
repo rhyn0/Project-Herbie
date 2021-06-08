@@ -1,0 +1,66 @@
+Herbie Skeleton Command Descriptions
+
+Documentation of Senior Project Spring 2021 Controls
+
+calibrate [motor-name motor-name ...]
+	calibrates the wheels. If no options provided, will calibrate all wheels otherwise specified wheels only.
+
+arc drive-direction turn-direction radius distance
+	arc turn command. drive-direction needs to be 'forward' or 'backward', turn-direction is 'left' or 'right'
+	radius will determine the strenght of turn, must be in range [0.45,300]
+	distance along circle to travel
+
+recenter
+	aligns all CornerMotor to center
+
+forward wheel-name
+	spins a single wheel forward until user presses Enter 
+
+forward speed dist 
+	DEPRECATED - calculates time to spin all wheels at speed to travel distance
+
+backward wheel-name
+	spins a single wheel backward until user presses Enter 
+
+backward speed dist 
+	DEPRECATED - calculates time to spin all wheels at speed to travel distance
+
+tank direction degrees
+	Executes the tank spinning. Wheels must be rotated already for this to work effectively.
+	direction is {'cw', 'ccw'}. degrees needs to be greater than 0.
+
+tankturn direction degrees
+	Rotates the wheels to position then turns
+	direction is {'cw', 'ccw'}. degrees needs to be greater than 0.
+
+encoders
+	Prints out the encoder value for every wheel
+
+position motor-name encoder-value
+	moves a specific motor to a input encoder-value
+
+meters all/motor-name distance
+	moves wheel a certain distance if input is a motor-name. if 'all' then drives the motor distance specified.
+
+velocity all/motor-name direction 
+	UNTESTED
+	Moves wheel a certain distance if input is a motor-name. if 'all' then drives DIRECTION indefinitely
+
+auto
+	Autonomous mode, drives forward until object visually detected then turns.
+	NOT ENABLED for Herbie Skeleton as of 6/7/2021
+
+rotate motor-name direction angle
+	Rotates a single wheel in direction for angle degrees. Checks if motor-name is a valid CornerMotor
+
+max motor-name direction
+	Rotates a single wheel to max in direction. Checks if motor-name is a valid CornerMotor
+
+stop
+	Stops all motion in motors
+
+history
+	Pulls up a history of recent commands run to streamline using the shell.
+
+q 
+	quits the shell and stops the Rover
