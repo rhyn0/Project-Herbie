@@ -790,6 +790,7 @@ def set_arc_wheels(direction: str, radius: float) -> None:
     CORNER_BR.rotate_n_degrees(
         direction, outer_deg if direction == "left" else -1 * inner_deg
     )
+    wait_until_all_complete()
 
 
 # drives rover forward for arc turn at specified speed for specified distance
