@@ -11,13 +11,14 @@ T = Union[motor.Motor, motor.CornerMotor]
 # arc turn constants
 R_OUTER = 0.31  # 310 mm dist between front/back corner wheels
 R_OUTER_MID = 0.4  # 400 mm dist between center drive wheels
-R_HEIGHT = 0.556 / 2  # 290 mm dist between rover center and front
+R_HEIGHT = 0.556 / 2  # 278 mm dist between rover center and front
 MAX_TURN = 36
 MAX_SPEED_VEL = 0.05
 CALIBRATION_SPEED = 30
 STOP_THRESHOLD = 100
 MOVING_THRESHOLD = 50
 SLEEP_TIME = 0.25
+COUNT_PER_METER = 28900
 
 # number of seconds per degree for tank turn
 # SECONDS_PER_DEGREE = 0.12722222
@@ -214,15 +215,20 @@ def move_distance_meters(motor_name: str, distance: float) -> int:
     motor_name : str
         string representing the Motor, see ALL_WHEELS for corresponding name
     distance : float
-        number of degrees to turn that wheel
+        distance in meters to travel
         
     Returns
     ----
     int
         0 on success, -1 for errors and prints the associated error
     """
+    recenter()
     distance = float(distance)
-    COUNT_PER_METER = 47050
+
+    """radius of a wheel is roughly 6cm
+    so 1 meter divided by circumference of wheel 
+    multiplied by encoders per revolution (10900)
+    """
     if motor_name == "all":
         for wheel in WHEELS:
             encoder_dist = int(distance * COUNT_PER_METER)
@@ -252,7 +258,6 @@ def move_distance_meters(motor_name: str, distance: float) -> int:
 #
 def move_default_velocity(motor_name: str, direction: str) -> int:
     """Moves a specific wheel or all of them at 0.1 m/s velocity indefinitely. 
-    NOTE - untested as of 2/17/2021
     
     Parameters
     ------
@@ -283,6 +288,17 @@ def move_default_velocity(motor_name: str, direction: str) -> int:
         mtr.set_motor_speed(direction, 0.01)
     return 0
 
+def wheel_stats(motor_name: str) -> int:
+    mtr = ALL_MOTORS.get(motor_name.lower(), None)
+    if mtr is None:
+        print(f"Invalid motor name: {motor_name}")
+        return -1
+    if isinstance(mtr, motor.CornerMotor):
+        print(f"Left: {mtr.left_most}, Center: {mtr.center}, Right: {mtr.right_most}")
+        return 0
+    print("No stats to print for a drive motor.")
+    return 0
+
 
 def calibrate_all() -> int:
     """Spawns individual threads for each Roboclaw controller and calibrates each
@@ -303,12 +319,13 @@ def calibrate_all() -> int:
     for thread in thrds:
         thread.join()
 
-    # wait_until_move_complete(CORNER_BR)
-    wait_until_all_complete()
+    #wait_until_move_complete(CORNER_BR)
+    #wait_until_all_complete()
 
     for cr in CORNERS:
         cr.stop()
     return 0
+
 
 
 def calibrate_one(motor_name: str) -> int:
@@ -327,8 +344,6 @@ def calibrate_one(motor_name: str) -> int:
         return -1
     if isinstance(mtr, motor.CornerMotor):
         mtr.calibrate()
-        wait_until_move_complete(mtr)
-        mtr.stop()
         return 0
     else:
         print(f"Invalid motor type: {type(mtr).__name__}")
@@ -527,7 +542,8 @@ def tank(direction: str, degrees: float) -> int:
 def distance_tank(direction: str, degrees: float) -> int:
     """Executes the actual wheel spinning to cause rover to rotate.
     This one uses distance commands
-    TESTING 6/7/2021 -Ryan Ozawa
+    NOTE NOT SATISFIED -  6/7/2021 -Ryan Ozawa
+    Doesn't work as expected, need more time with testing and tuning numbers
     """
     direction = direction.lower()
     # check tank_turn.pdf for this value
@@ -543,9 +559,9 @@ def distance_tank(direction: str, degrees: float) -> int:
     if direction == "cw":
         # set speed
         for wheel in WHEELS_LEFT:
-            wheel.move_distance(rad * degrees)
+            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER)
         for wheel in WHEELS_RIGHT:
-            wheel.move_distance(-1 * rad * degrees)
+            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER)
         # wait for duration
         wait_until_all_complete()
         # stop motors
@@ -554,9 +570,9 @@ def distance_tank(direction: str, degrees: float) -> int:
         return 0
     elif direction == "ccw":
         for wheel in WHEELS_LEFT:
-            wheel.move_distance(-1 * rad * degrees)
+            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER)
         for wheel in WHEELS_RIGHT:
-            wheel.move_distance(rad * degrees)
+            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER)
         # wait for duration
         wait_until_all_complete()
         # stop motors
@@ -621,7 +637,7 @@ def forward(speed: float, dist: float) -> int:
     howLong = get_time(speed, dist)
 
     print(
-        f"Driving forward at {speed:.4f} m/s for {dist:.2f} meters for {howLong: .2f} seconds"
+        f"Driving forward at {speed:.4f} m/s for {dist:.2f} meters for {howLong:.2f} seconds"
     )
     direction = "forward"
     for wheel in WHEELS:
@@ -774,21 +790,25 @@ def set_arc_wheels(direction: str, radius: float) -> None:
         Radius of circle, measured to center rover
     """
     recenter()
+    opp_direction = "left"
     outer_deg = math.degrees(math.atan(R_HEIGHT / (radius + R_OUTER / 2)))
     inner_deg = math.degrees(math.atan(R_HEIGHT / (radius - R_OUTER / 2)))
+    if opp_direction == direction:
+        opp_direction = "right"
     # rotate_n_degrees doesn't check that angle > 0, so can abuse this
     # to rotate opposite of direction implied. Works well here and makes code simpler
     CORNER_FL.rotate_n_degrees(
-        direction, outer_deg if direction == "right" else -1 * inner_deg
+        direction, outer_deg if direction == "right" else inner_deg
     )
     CORNER_FR.rotate_n_degrees(
-        direction, -1 * outer_deg if direction == "left" else inner_deg
+        direction, outer_deg if direction == "left" else inner_deg
     )
+    # rear corners turn opposite of front
     CORNER_BL.rotate_n_degrees(
-        direction, -1 * outer_deg if direction == "right" else inner_deg
+        opp_direction,  outer_deg if direction == "right" else inner_deg
     )
     CORNER_BR.rotate_n_degrees(
-        direction, outer_deg if direction == "left" else -1 * inner_deg
+        opp_direction, outer_deg if direction == "left" else  inner_deg
     )
     wait_until_all_complete()
 
@@ -835,6 +855,8 @@ def arc_turn_drive(direction, radius, dist, drive) -> int:
 
 
 def autonomous() -> None:
+    """This command is legacy from Herbie Mk1, it will never be called
+    """
     calibrate_all()
     while True:
         move_distance_meters("all", 1)  # this will be changed to move until

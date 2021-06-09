@@ -86,76 +86,84 @@ def command_forward(tokn: list):
 
 
 def parseCommand(command):  # try-except commented out for debugging purposes
-    # try:
-    if command[0] == "calibrate":
-        return command_calibrate(command[1:])
+    try:
+        if command[0] == "calibrate":
+            return command_calibrate(command[1:])
 
-    elif command[0] == "arc" and len(command) == 5:
-        return commands.turn(command[1], command[2], command[3], command[4])
+        elif command[0] == "arc" and len(command) == 5:
+            return commands.turn(command[1], command[2], command[3], command[4])
 
-    elif command[0] == "recenter":
-        return commands.recenter()
+        elif command[0] == "recenter":
+            return commands.recenter()
 
-    elif command[0] == "forward":
-        return command_forward(command[1:])
+        elif command[0] == "forward":
+            return command_forward(command[1:])
 
-    elif command[0] == "backward":
-        return command_backward(command[1:])
+        elif command[0] == "backward":
+            return command_backward(command[1:])
 
-    elif command[0] == "tank":
-        # format: tank direction degrees. direction: {'cw', 'ccw'}
-        # Note: This command does NOT set the wheels to proper orientation
-        # DEPRECATED?: Uses time based command, needs another math proof.
-        if len(command) != 3:
+        elif command[0] == "tank":
+            # format: tank direction degrees. direction: {'cw', 'ccw'}
+            # Note: This command does NOT set the wheels to proper orientation
+            # DEPRECATED?: Uses time based command, needs another math proof.
+            if len(command) != 3:
+                return -1
+            return commands.tank(command[1].lower(), command[2])
+
+        elif command[0] == "tankturn":
+            if len(command) != 3:
+                return -1
+            return commands.tank_with_turn(command[1], command[2])
+
+        elif command[0] == "encoders":
+            return commands.print_encoders()
+
+        elif command[0] == "position":
+            # format: position motor-name encoder-value
+            if len(command) != 3:
+                return -1
+            return commands.position(command[1], command[2])
+
+        elif command[0] == "meters":
+            # format: meters motor-name/all distance
+            if len(command) != 3:
+                return -1
+            return commands.move_distance_meters(command[1], command[2])
+
+        elif command[0] == "velocity":
+            # format: velocity motor-name/all direction
+            if len(command) != 3:
+                return -1
+            return commands.move_default_velocity(command[1], command[2])
+
+        # elif command[0] == "auto":
+        #     # format: auto
+        #     return commands.autonomous()
+
+        elif command[0] == "rotate":
+            # format: rotate wheel-name direction angle
+            if len(command) != 4:
+                return -1
+            return commands.rotate(command[1], command[2], command[3])
+
+        elif command[0] == "max":
+            # format: max wheel-name direction
+            if len(command) != 3:
+                return -1
+            return commands.rotate_max(command[1], command[2])
+
+        elif command[0] == "stop":
+            return commands.kill_all()
+
+        elif command[0] == "stats":
+            #format: stats wheel-name
+            if len(command) != 2:
+                return -1
+            return commands.wheel_stats(command[1])
+
+        else:
+            print("Unrecognized Command")
             return -1
-        return commands.tank(command[1].lower(), command[2])
-
-    elif command[0] == "tankturn":
-        if len(command) != 3:
-            return -1
-        return commands.tank_with_turn(command[1], command[2])
-
-    elif command[0] == "encoders":
-        return commands.print_encoders()
-
-    elif command[0] == "position":
-        # format: position motor-name encoder-value
-        if len(command) != 3:
-            return -1
-        return commands.position(command[1], command[2])
-
-    elif command[0] == "meters":
-        # format: meters motor-name/all distance
-        if len(command) != 3:
-            return -1
-        return commands.move_distance_meters(command[1], command[2])
-
-    elif command[0] == "velocity":
-        # format: velocity motor-name/all direction
-        if len(command) != 3:
-            return -1
-        return commands.move_default_velocity(command[1], command[2])
-
-    # elif command[0] == "auto":
-    #     # format: auto
-    #     return commands.autonomous()
-
-    elif command[0] == "rotate":
-        # format: rotate wheel-name direction angle
-        if len(command) != 4:
-            return -1
-        return commands.rotate(command[1], command[2], command[3])
-
-    elif command[0] == "max":
-        # format: max wheel-name direction
-        if len(command) != 3:
-            return -1
-        return commands.rotate_max(command[1], command[2])
-
-    elif command[0] == "stop":
-        return commands.kill_all()
-
-    else:
-        print("Unrecognized Command")
+    except ValueError:
         return -1
 

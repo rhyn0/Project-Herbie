@@ -111,8 +111,6 @@ class CornerMotor(Motor):
         self.center = 0
         self.left_most = 0
         self.right_most = 0
-        self.center_raw = 0
-        self.total = 0
         self.calibrated = False
         self.encoders_per_degree = None  # ratio of encoder values
 
@@ -253,16 +251,17 @@ class CornerMotor(Motor):
         self.left_most = left_most + 50
         self.right_most = right_most - 50
 
-        self.center = (right_most + left_most) // 2
+        self.center = (self.right_most + self.left_most) // 2
 
         self.calibrated = True
         # go to center position
         with lock:
-            self.go_to_center()
+            self.go_to_position(self.center)
             while not self.move_is_complete():
                 pass
+            self.stop()
 
         # calculate encoder to angle value
         encoder_range = abs(self.right_most - self.left_most)
         self.encoders_per_degree = encoder_range / ANGULAR_RANGE
-        return (left_most, self.center, right_most)
+        return (self.left_most, self.center, self.right_most)

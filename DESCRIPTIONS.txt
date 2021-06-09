@@ -13,14 +13,14 @@ arc drive-direction turn-direction radius distance
 recenter
 	aligns all CornerMotor to center
 
-forward wheel-name
-	spins a single wheel forward until user presses Enter 
+forward speed
+	spins all wheels forward until user presses Enter 
 
 forward speed dist 
 	DEPRECATED - calculates time to spin all wheels at speed to travel distance
 
-backward wheel-name
-	spins a single wheel backward until user presses Enter 
+backward speed
+	spins all wheels backward until user presses Enter 
 
 backward speed dist 
 	DEPRECATED - calculates time to spin all wheels at speed to travel distance
@@ -43,7 +43,6 @@ meters all/motor-name distance
 	moves wheel a certain distance if input is a motor-name. if 'all' then drives the motor distance specified.
 
 velocity all/motor-name direction 
-	UNTESTED
 	Moves wheel a certain distance if input is a motor-name. if 'all' then drives DIRECTION indefinitely
 
 auto
@@ -58,6 +57,9 @@ max motor-name direction
 
 stop
 	Stops all motion in motors
+
+stats motor-name
+	Prints out the necessary stats about a CornerMotor
 
 history
 	Pulls up a history of recent commands run to streamline using the shell.
