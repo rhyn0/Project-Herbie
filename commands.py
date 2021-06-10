@@ -542,8 +542,6 @@ def tank(direction: str, degrees: float) -> int:
 def distance_tank(direction: str, degrees: float) -> int:
     """Executes the actual wheel spinning to cause rover to rotate.
     This one uses distance commands
-    NOTE NOT SATISFIED -  6/7/2021 -Ryan Ozawa
-    Doesn't work as expected, need more time with testing and tuning numbers
     """
     direction = direction.lower()
     # check tank_turn.pdf for this value
@@ -559,9 +557,9 @@ def distance_tank(direction: str, degrees: float) -> int:
     if direction == "cw":
         # set speed
         for wheel in WHEELS_LEFT:
-            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER)
+            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER // 36)
         for wheel in WHEELS_RIGHT:
-            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER)
+            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER // 36)
         # wait for duration
         wait_until_all_complete()
         # stop motors
@@ -570,9 +568,9 @@ def distance_tank(direction: str, degrees: float) -> int:
         return 0
     elif direction == "ccw":
         for wheel in WHEELS_LEFT:
-            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER)
+            wheel.move_distance(int(-1 * rad * degrees) * COUNT_PER_METER // 36)
         for wheel in WHEELS_RIGHT:
-            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER)
+            wheel.move_distance(int(rad * degrees) * COUNT_PER_METER // 36)
         # wait for duration
         wait_until_all_complete()
         # stop motors
@@ -611,7 +609,7 @@ def tank_with_turn(direction: str, degrees: float) -> int:
     for cr in CORNERS:
         cr.stop()
 
-    return tank(direction, degrees)
+    return distance_tank(direction, degrees)
 
 
 def forward(speed: float, dist: float) -> int:

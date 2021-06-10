@@ -108,7 +108,7 @@ def parseCommand(command):  # try-except commented out for debugging purposes
             # DEPRECATED?: Uses time based command, needs another math proof.
             if len(command) != 3:
                 return -1
-            return commands.tank(command[1].lower(), command[2])
+            return commands.distance_tank(command[1].lower(), command[2])
 
         elif command[0] == "tankturn":
             if len(command) != 3:

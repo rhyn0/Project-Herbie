@@ -28,6 +28,7 @@ backward speed dist
 tank direction degrees
 	Executes the tank spinning. Wheels must be rotated already for this to work effectively.
 	direction is {'cw', 'ccw'}. degrees needs to be greater than 0.
+	Now uses distance commands instead of thread sleeping.
 
 tankturn direction degrees
 	Rotates the wheels to position then turns
