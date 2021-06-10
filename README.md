@@ -24,3 +24,7 @@ The following command will open the command shell for the Rover, and need to inp
 ```python
 python3 start.py
 ```
+
+### Notes for Legacy Projects
+
+Really work on smoothing out a complex movement command. Try making an 'S' turn without stopping once is the goal.
